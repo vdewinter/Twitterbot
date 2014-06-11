@@ -7,35 +7,20 @@ import random
 
 def parse_text():
     scriptname, filename = argv
-    keep_lines = []
     keep_words = []
 
     with open(filename) as f:
         for line in f.readlines():
-            line = line.strip()
-            if line.upper() != line:
-                keep_lines.append(line)
-            elif line.startswith("               "):
-                keep_lines.append(line)
-            # elif "(" in line and ")" in line:
-            #     for char in line:
-            #         while char == "(" and char != ")":
-            #             char.replace(char, "")
-
-    for i in keep_lines:
-        split_words = i.split(" ")
-        for word in split_words:
-            word = word.replace(" ", "")
-            if word != "":
-                keep_words.append(word)
-
+            words = line.strip().replace("\"","").split(" ")
+            for word in words:
+                if word != "":
+                    keep_words.append(word)
     return keep_words
     f.close()
 
 def gen_dict(keep_words):
     bigram_dict = {}
-    i = 0
-    
+
     for i in range(len(keep_words)-2):
         bigram = (keep_words[i], keep_words[i+1])
         if bigram in bigram_dict:
@@ -45,34 +30,37 @@ def gen_dict(keep_words):
     return bigram_dict
         
 def gen_tweets(bigram_dict):
-    len_tweet = 140
-
     sentence_beginnings = []
+    tweet_list = []
+    tweet_max_len = 140/5 # assume 5 letters/word on avg
 
+    # find sentence beginnings (elts in keys that follow elts ending in periods)
     for k,v in bigram_dict.iteritems():
-        # find sentence beginnings
         if k[0].endswith(".") and "." not in k[1]:
             sentence_beginnings.append(k[1])
-            break
-
-    sentence_beginning = random.choice(sentence_beginnings)
-    print sentence_beginning
-    r = random.randint(0, len(v)-1)
-    word = (k[1], v[r])
-    print v[r]
 
     # pick a random sentence beginning
+    sentence_beginning = random.choice(sentence_beginnings)
+    tweet_list.append(sentence_beginning)
 
-    while bigram_dict[word] and not bigram_dict[word][r].endswith("."):
-        if word in bigram_dict:
-            print bigram_dict[word][r], word
-            r = random.randint(0, len(bigram_dict[word])-1)
-            word = (word[1], bigram_dict[word][r])
-        else:
-            break
+    # pick random value following sentence_beginning
+    r = random.randint(0, len(v)-1)
+    word = (k[1], v[r])
 
+    # generate rest of sentence with markov chain
+    while bigram_dict[word] and len(tweet_list) < tweet_max_len:
+        r = random.randint(0, len(bigram_dict[word])-1)
+        tweet_list.append(bigram_dict[word][r]) 
+        word = (word[1], bigram_dict[word][r])
+
+    tweet_string = " ".join(tweet_list)
+    cutting_point = tweet_string.find(".", 100)
+    print tweet_string[:cutting_point+1]
+            
 def main():
-    gen_tweets(gen_dict(parse_text()))
+    parsed_text = parse_text()
+    gened_dict = gen_dict(parsed_text)
+    gen_tweets(gened_dict)
 
 if __name__ == "__main__":
     main()
